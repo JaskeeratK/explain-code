@@ -1,10 +1,10 @@
-mermaid.initialize({ startOnLoad: false, theme: "default" });
+mermaid.initialize({ startOnLoad: false, theme: "base" });
 
-function showTab(name) {
+function showTab(name, e) {
   document.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("active"));
   document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
   document.getElementById("tab-" + name).classList.add("active");
-  event.target.classList.add("active");
+  if (e && e.target) e.target.classList.add("active");
 }
 
 async function analyze() {
@@ -36,7 +36,7 @@ async function analyze() {
     const data = await res.json();
 
     if (!data.ok) {
-      showError("Claude returned unexpected output. Try again.<br><pre style='font-size:0.75rem;margin-top:0.5rem;overflow:auto'>" + escHtml(data.raw || "") + "</pre>");
+      showError("Hmm, something went wrong. Try again!<br><pre style='font-size:0.75rem;margin-top:0.5rem;overflow:auto'>" + escHtml(data.raw || "") + "</pre>");
       return;
     }
 
@@ -51,9 +51,10 @@ async function analyze() {
 }
 
 function renderResults(r) {
-  lastAnalysis = r;                                      // add this
-  currentCode = document.getElementById("code").value;  // add this
+  lastAnalysis = r;
+  currentCode = document.getElementById("code").value;
   document.getElementById("chat-section").style.display = "block";
+
   // ELI5
   document.getElementById("eli5-text").textContent = r.eli5_explanation || "—";
 
@@ -75,7 +76,7 @@ function renderResults(r) {
     edgeList.appendChild(li);
   });
 
-  // Complexity — split "O(n) — reason" into value + desc
+  // Complexity
   function parseComplexity(str) {
     const parts = (str || "").split(/[—–-]/);
     return { val: parts[0].trim(), desc: parts.slice(1).join(" ").trim() };
@@ -84,7 +85,7 @@ function renderResults(r) {
   const tc = parseComplexity(r.time_complexity);
   const sc = parseComplexity(r.space_complexity);
   document.getElementById("time-val").textContent  = tc.val;
-  document.getElementById("time-desc").textContent  = tc.desc;
+  document.getElementById("time-desc").textContent = tc.desc;
   document.getElementById("space-val").textContent  = sc.val;
   document.getElementById("space-desc").textContent = sc.desc;
 
@@ -102,19 +103,19 @@ async function renderMermaid(chartText) {
     startOnLoad: false,
     theme: "base",
     themeVariables: {
-      primaryColor: "#6366f1",
-      primaryTextColor: "#ffffff",
-      primaryBorderColor: "#4f46e5",
-      lineColor: "#a5b4fc",
-      secondaryColor: "#1e1b4b",
-      tertiaryColor: "#312e81",
-      background: "#0f0f10",
-      mainBkg: "#1e1b4b",
-      nodeBorder: "#6366f1",
-      clusterBkg: "#1e1b4b",
-      titleColor: "#e2e2e5",
-      edgeLabelBackground: "#1a1a1e",
-      fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+      primaryColor: "#fef9c3",
+      primaryTextColor: "#92400e",
+      primaryBorderColor: "#d97706",
+      lineColor: "#92400e",
+      secondaryColor: "#bfdbfe",
+      tertiaryColor: "#bbf7d0",
+      background: "#fffdf5",
+      mainBkg: "#fef9c3",
+      nodeBorder: "#d97706",
+      clusterBkg: "#fffdf5",
+      titleColor: "#1c1917",
+      edgeLabelBackground: "#fffdf5",
+      fontFamily: "'Nunito', sans-serif",
       fontSize: "15px",
     },
   });
@@ -123,13 +124,45 @@ async function renderMermaid(chartText) {
     const id = "mermaid-svg-" + Date.now();
     const { svg } = await mermaid.render(id, chartText);
     container.innerHTML = svg;
-    container.querySelector("svg").style.maxWidth = "100%";
+
+    const svgEl = container.querySelector("svg");
+    svgEl.style.maxWidth = "100%";
+    svgEl.style.filter = "url(#crayon)";
+
+    // Crayon colors cycling through nodes
+    const crayonFills   = ["#fef9c3", "#bfdbfe", "#bbf7d0", "#fecaca", "#e9d5ff", "#fed7aa"];
+    const crayonStrokes = ["#d97706", "#3b82f6", "#16a34a", "#dc2626", "#7c3aed", "#ea580c"];
+
+    svgEl.querySelectorAll(".node rect, .node circle, .node polygon, .node ellipse").forEach((el, i) => {
+      el.style.fill        = crayonFills[i % crayonFills.length];
+      el.style.stroke      = crayonStrokes[i % crayonStrokes.length];
+      el.style.strokeWidth = "2.5px";
+      el.setAttribute("rx", "10");
+      el.setAttribute("ry", "12");
+    });
+
+    // Rough hand-drawn edges
+    svgEl.querySelectorAll("path.flowchart-link, .edgePath path, line, polyline").forEach(el => {
+      el.style.strokeLinecap  = "round";
+      el.style.strokeLinejoin = "round";
+      el.style.strokeWidth    = "2.5px";
+      el.style.stroke         = "#92400e";
+    });
+
+    // Crayon text
+    svgEl.querySelectorAll(".nodeLabel, .label, text").forEach(el => {
+      el.style.fontFamily = "'Nunito', sans-serif";
+      el.style.fontWeight = "700";
+      el.style.filter     = "url(#crayon-text)";
+    });
+
   } catch (err) {
     container.innerHTML = `
-      <p style="color:#f87171;font-size:0.85rem">Could not render diagram: ${escHtml(err.message)}</p>
-      <pre style="font-size:0.75rem;color:#9ca3af;margin-top:0.5rem;overflow:auto;white-space:pre-wrap">${escHtml(chartText)}</pre>`;
+      <p style="color:#9a3412;font-size:0.85rem;font-weight:700">Could not render diagram: ${escHtml(err.message)}</p>
+      <pre style="font-size:0.75rem;color:#78716c;margin-top:0.5rem;overflow:auto;white-space:pre-wrap">${escHtml(chartText)}</pre>`;
   }
 }
+
 function showError(msg) {
   document.getElementById("error-area").innerHTML =
     `<div class="error-box">${msg}</div>`;
@@ -138,6 +171,7 @@ function showError(msg) {
 function escHtml(s) {
   return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
 }
+
 function speakELI5() {
   const text = document.getElementById("eli5-text").textContent;
   const utter = new SpeechSynthesisUtterance(text);
@@ -145,12 +179,14 @@ function speakELI5() {
   utter.pitch = 1.1;
   window.speechSynthesis.speak(utter);
 }
-// Allow Ctrl+Enter to submit
+
+// Ctrl+Enter to submit
 document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("code").addEventListener("keydown", e => {
     if (e.ctrlKey && e.key === "Enter") analyze();
   });
 });
+
 let lastAnalysis = null;
 let currentCode = "";
 
@@ -161,7 +197,11 @@ async function askQuestion() {
   const messages = document.getElementById("chat-messages");
 
   // User bubble
-  messages.innerHTML += `<div style="align-self:flex-end;background:#1e1b4b;border-radius:8px;padding:0.5rem 0.75rem;font-size:0.85rem;max-width:80%">${escHtml(question)}</div>`;
+  const userDiv = document.createElement("div");
+  userDiv.className = "msg-user";
+  userDiv.textContent = question;
+  messages.appendChild(userDiv);
+
   document.getElementById("chat-input").value = "";
   messages.scrollTop = messages.scrollHeight;
 
@@ -178,19 +218,24 @@ async function askQuestion() {
   const data = await res.json();
 
   // AI bubble
-  messages.innerHTML += `<div style="align-self:flex-start;background:#1a1a2e;border:1px solid #2a2a40;border-radius:8px;padding:0.5rem 0.75rem;font-size:0.85rem;max-width:85%;color:#d1d5db">${escHtml(data.answer)}</div>`;
+  const aiDiv = document.createElement("div");
+  aiDiv.className = "msg-ai";
+  aiDiv.textContent = data.answer;
+  messages.appendChild(aiDiv);
+
   messages.scrollTop = messages.scrollHeight;
 }
 
 function exportCard() {
   const r = lastAnalysis;
+  if (!r) return;
   const html = `
-    <h2>CodeLens Analysis</h2>
+    <h2>Crayonify Analysis</h2>
     <h3>ELI5</h3><p>${r.eli5_explanation}</p>
     <h3>Complexity</h3><p>Time: ${r.time_complexity}</p><p>Space: ${r.space_complexity}</p>
     <h3>Edge Cases</h3><ul>${r.edge_cases.map(e=>`<li>${e}</li>`).join("")}</ul>
   `;
   const win = window.open("", "_blank");
-  win.document.write(`<html><body style="font-family:sans-serif;padding:2rem;max-width:700px">${html}</body></html>`);
+  win.document.write(`<html><body style="font-family:'Nunito',sans-serif;padding:2rem;max-width:700px;background:#f5f0e8">${html}</body></html>`);
   win.print();
 }
