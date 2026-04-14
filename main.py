@@ -84,6 +84,28 @@ def analyze_code(input: CodeInput):
         return {"ok": True, "result": parsed}
     except json.JSONDecodeError:
         return {"ok": False, "raw": raw, "error": "Failed to parse JSON"}
+class ChatInput(BaseModel):
+    code: str
+    question: str
+    context: str  # pass the previous analysis as context
 
+@app.post("/chat")
+def chat_about_code(input: ChatInput):
+    response = client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
+        messages=[
+            {
+                "role": "system",
+                "content": "You are a code tutor. Answer questions about the provided code concisely and clearly. No markdown."
+            },
+            {
+                "role": "user",
+                "content": f"Code:\n{input.code}\n\nPrevious analysis:\n{input.context}\n\nQuestion: {input.question}"
+            }
+        ],
+        temperature=0.4,
+        max_tokens=500,
+    )
+    return {"answer": response.choices[0].message.content.strip()}
 
 app.mount("/", StaticFiles(directory="frontend", html=True), name="frontend")

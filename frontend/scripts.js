@@ -51,6 +51,9 @@ async function analyze() {
 }
 
 function renderResults(r) {
+  lastAnalysis = r;                                      // add this
+  currentCode = document.getElementById("code").value;  // add this
+  document.getElementById("chat-section").style.display = "block";
   // ELI5
   document.getElementById("eli5-text").textContent = r.eli5_explanation || "—";
 
@@ -135,10 +138,59 @@ function showError(msg) {
 function escHtml(s) {
   return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
 }
-
+function speakELI5() {
+  const text = document.getElementById("eli5-text").textContent;
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.rate = 0.9;
+  utter.pitch = 1.1;
+  window.speechSynthesis.speak(utter);
+}
 // Allow Ctrl+Enter to submit
 document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("code").addEventListener("keydown", e => {
     if (e.ctrlKey && e.key === "Enter") analyze();
   });
 });
+let lastAnalysis = null;
+let currentCode = "";
+
+async function askQuestion() {
+  const question = document.getElementById("chat-input").value.trim();
+  if (!question) return;
+
+  const messages = document.getElementById("chat-messages");
+
+  // User bubble
+  messages.innerHTML += `<div style="align-self:flex-end;background:#1e1b4b;border-radius:8px;padding:0.5rem 0.75rem;font-size:0.85rem;max-width:80%">${escHtml(question)}</div>`;
+  document.getElementById("chat-input").value = "";
+  messages.scrollTop = messages.scrollHeight;
+
+  const res = await fetch("/chat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      code: currentCode,
+      question,
+      context: JSON.stringify(lastAnalysis)
+    })
+  });
+
+  const data = await res.json();
+
+  // AI bubble
+  messages.innerHTML += `<div style="align-self:flex-start;background:#1a1a2e;border:1px solid #2a2a40;border-radius:8px;padding:0.5rem 0.75rem;font-size:0.85rem;max-width:85%;color:#d1d5db">${escHtml(data.answer)}</div>`;
+  messages.scrollTop = messages.scrollHeight;
+}
+
+function exportCard() {
+  const r = lastAnalysis;
+  const html = `
+    <h2>CodeLens Analysis</h2>
+    <h3>ELI5</h3><p>${r.eli5_explanation}</p>
+    <h3>Complexity</h3><p>Time: ${r.time_complexity}</p><p>Space: ${r.space_complexity}</p>
+    <h3>Edge Cases</h3><ul>${r.edge_cases.map(e=>`<li>${e}</li>`).join("")}</ul>
+  `;
+  const win = window.open("", "_blank");
+  win.document.write(`<html><body style="font-family:sans-serif;padding:2rem;max-width:700px">${html}</body></html>`);
+  win.print();
+}

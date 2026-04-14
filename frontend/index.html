@@ -214,6 +214,7 @@
         <button id="analyze-btn" onclick="analyze()">
           Analyze Code <span class="spinner" id="spinner"></span>
         </button>
+
       </div>
       <textarea id="code" placeholder="Paste your code here...
 &#10;Example:&#10;int sum(int n) {&#10;    int s = 0;&#10;    for(int i = 1; i &lt;= n; i++) s += i;&#10;    return s;&#10;}"></textarea>
@@ -231,7 +232,11 @@
       </div>
 
       <div id="tab-eli5" class="tab-panel active">
-        <div class="card"><p id="eli5-text"></p></div>
+        <div class="card"><p id="eli5-text"></p>
+          <button onclick="speakELI5()" style="margin-top:1rem;background:#1e1b4b;border:1px solid #6366f1;color:#a5b4fc;padding:0.4rem 1rem;border-radius:6px;cursor:pointer;font-size:0.85rem">
+            🔊 Read aloud
+          </button>
+        </div>
       </div>
 
       <div id="tab-steps" class="tab-panel">
@@ -263,6 +268,19 @@
             <div class="label">Space complexity</div>
             <div class="value" id="space-val"></div>
             <div class="desc" id="space-desc"></div>
+          </div>
+        </div>
+      </div>
+      <div id="chat-section" style="display:none;margin-top:1.5rem">
+        <div style="background:#1a1a1e;border:1px solid #2a2a30;border-radius:10px;padding:1.25rem">
+          <h3 style="font-size:0.95rem;color:#a5b4fc;margin-bottom:1rem">💬 Ask about this code</h3>
+          <div id="chat-messages" style="min-height:60px;max-height:240px;overflow-y:auto;margin-bottom:0.75rem;display:flex;flex-direction:column;gap:0.5rem"></div>
+          <div style="display:flex;gap:0.5rem">
+            <input id="chat-input" type="text" placeholder="Why is this slow? How do I optimize it?"
+              style="flex:1;background:#111115;border:1px solid #2a2a30;border-radius:6px;color:#e2e2e5;padding:0.5rem 0.75rem;font-size:0.875rem;outline:none"
+              onkeydown="if(event.key==='Enter') askQuestion()"/>
+            <button onclick="askQuestion()"
+              style="background:#6366f1;border:none;border-radius:6px;color:white;padding:0.5rem 1rem;cursor:pointer;font-size:0.875rem">Ask</button>
           </div>
         </div>
       </div>
